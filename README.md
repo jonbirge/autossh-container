@@ -1,107 +1,33 @@
 # autossh
 
-[![Docker](https://badgen.net/badge/jnovack/autossh/blue?icon=docker)](https://hub.docker.com/r/jnovack/autossh)
-[![Github](https://badgen.net/badge/jnovack/autossh/purple?icon=github)](https://github.com/jnovack/autossh)
-
-Highly customizable AutoSSH docker container.
+Customizable AutoSSH docker container forked from jnovac's excellent repo.
 
 ## Overview
 
-**jnovack/autossh** is a small lightweight (~15MB) image that attempts to
-provide a secure way to establish an SSH Tunnel without including your keys in
-the image itself or linking to the host.
+**jonbirge/autossh** is a small (~15MB) image that provides a secure way
+to create multiple ssh tunnels from one host to another.
 
-There are thousands of *autossh* docker containers, why use this one? I hope
-you find it easier to use. It is smaller, more customizable, an automated
-build, easy to use, and I hope you learn something. I tried to follow standards
-and established conventions where I could to make it easier to understand and
-copy and paste lines from this project to others to grow your knowledge!
+The main reason for this container is that it is, to my knowledge, the only
+one that offers a simple way to configure multiple tunnel channels from the same container
+in a reasonable simple way. Unlike other implementations, the intended use case of this isn't
+to tunnel into your home network without having to open any ports, but rather to allow you
+to ONLY open one ssh port (perhaps on an obfuscated port) and create multiple port forward
+through that connection. This could be useful, for example, if you wanted to be able to setup
+web interfaces to services on your home network (e.g. via guacamole) but didn't want to open
+up multiple ports on your home network.
+
+Why not use the reverse tunnel approach so no ports need to be open on your home network?
+Well, the whole need for connecting to my home network is predicated on the fact that at
+the moment I need it I'm not home. So, if I need to change something on the public server I'm
+using to connect, or if it goes down, suddenly I've lost all ability to connect to my home
+server and can't fix it. So, I always want at least a way to ssh into my home network,
+so I might as well tunnel *into* it rather than *from* it. Maybe you have the same need
+and willingness to live on the edge as I do.
 
 ## Description
 
 ``autossh`` is a program to start a copy of ssh and monitor it, restarting it
 as necessary should it die or stop passing traffic.
-
-Before we begin, I want to define some terms.
-
-- *local* - THIS docker container.
-
-- *target* - The endpoint and ultimate destination of the tunnel.
-
-- *remote* - The 'middle-man', or proxy server you are tunnelling through to
-get to your *target*.
-
-- *source* - The initial endpoint you are starting from that does not have
-access to the *target* endpoint, but does have access to the *remote*
-endpoint.
-
-The *local* machine is USUALLY the same as the *target* but since we are using
-Docker, we have to abstract out the *local* container from the *target*
-endpoint where we want **autossh** to land. Normally, this is where
-**autossh** is usually run from.
-
-Typically, the *target* can be on a Home LAN segment without a publicly
-addressible IP address; whereas the *remote* machine has an address that is
-reachable by both *target* and *source*. And *source* can only reach *remote*.
-
-```text
-target ---> |firewall| >--- remote ---< |firewall| <--- source
-10.1.1.101               203.0.113.10            192.168.1.101
-```
-
-The *target* (running **autossh**) connects up to the *remote* server and
-keeps a tunnel alive so that *source* can proxy through *remote* and reach
-resources on *target*.  Think of it as "long distance port-forwarding".
-
-### Example
-
-You are running `docker` on *target*, your home computer.  (Note: Linux Docker
-hosts automatically create a `docker0` interface with `172.17.0.1` so the
-containers can route to the host and out to other networks.  A container that
-starts up could have the IP address `172.17.0.2`, for our example.)  You have a
-Virtual Private Server (VPS) on the Internet that is accessible to all.  This
-*local* docker container will make a connection to the *remote* VPS and tunnel
-*remote* port 2222 to *target* port 22.  Any connection to *remote* port 2222
-will actually be to the *target* server on port 22. This is known as a "reverse
-tunnel".
-
-```text
-      TARGET_PORT                  REMOTE_PORT    TUNNEL_PORT
- target <--------------- local ------------> remote <--------------- source
- 10.1.1.101           172.17.0.2          203.0.113.10        192.168.1.101
-```
-
-> The LOCAL (172.17.0.2) device connects to the REMOTE (203.0.113.10)
-> REMOTE_PORT (:22) to create the tunnel on REMOTE (203.0.113.10) TUNNEL_PORT
-> (:11111).
->
-> The SOURCE (192.168.1.101) connects to the REMOTE (203.0.113.10) TUNNEL_PORT
-> (:11111) to get to the TARGET (10.1.1.101) TARGET_PORT (:22).
-
-By default, SSH server applications (such as OpenSSH, Dropbear, etc), only
-permit connections to forwarded ports from the loopback interface
-(`127.0.0.1`).
-
-This means, you must be authenticated and connected the *remote* and use it as
-a "jump point" (for a lack of a better term) before proceeding to connect to
-the tunnel.
-
-In the example above, from the *source*, you first have to open an SSH
-connection to the *remote* (`203.0.113.10`), then you can continue to connect
-to the *target* (`10.1.1.101`) by connecting to `127.0.0.1:TUNNEL_PORT`.
-It is a two-step process.
-
-To make this a one-step process (connecting from *source* to *target* via
-*remote*), you must make some security changes on the *remote* (not-advised).
-Please see the [SSH_BIND_IP](#SSH_BIND_IP) section below.
-
-#### Disclaimer
-
-By tunneling *remote* port 2222 to *target* port 22, you may be exposing
-a home server (and by extension, your home network) to the Internet at large,
-commonly known as "a bad thing(TM)".  Be sure to use appropriately use firewalls,
-`fail2ban` scripts, non-root access, key-based authentication only, and other
-security measures as necessary.
 
 ## Setup
 
@@ -131,11 +57,6 @@ The key's randomart image is:
 |     '-._____.-'     |
 +---------------------+
 ```
-
-## Command-line Options
-
-What would a docker container be without customization? I have an extensive
-list of environment variables that can be set.
 
 ### Environment Variables
 
